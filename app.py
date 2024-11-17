@@ -27,7 +27,7 @@ elif page == "Descriptive Analysis":
 
     # Download CSV file from Google Drive
     url = "https://drive.google.com/file/d/1ZVHsrxql9z61Fw8wnikyiOLRB5lGodHt/view?usp=drive_link"
-    output = "IMDb_movies.csv"
+    output = "IMDb movies.csv"
     gdown.download(url, output, quiet=False)
 
     # Read the downloaded CSV

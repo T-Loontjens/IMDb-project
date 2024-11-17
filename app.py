@@ -26,7 +26,7 @@ elif page == "Descriptive Analysis":
     st.write("Here, you can explore which variables contribute most to e.g. ratings via PCA analysis.")
 
     # Download CSV file from Google Drive
-    url = "https://drive.google.com/uc?id=https://drive.google.com/file/d/13TfN-gIkjs-QKKtBcJI5AWzGWp8OjySs/view?usp=drive_link"
+    url = "https://docs.google.com/spreadsheets/d/117jJogaStlTo_xPK6zu2-eHMTSYD0Cwc3VrxgV1xXZ4/edit?usp=drive_link"
     output = "IMDb_movies.csv"
     gdown.download(url, output, quiet=False)
 

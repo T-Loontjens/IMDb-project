@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 from st_aggrid import AgGrid, GridOptionsBuilder
+import gdown
+
 
 # Set the page layout to wide
 st.set_page_config(layout="wide")
@@ -23,9 +25,13 @@ elif page == "Descriptive Analysis":
     st.title("Descriptive Analysis")
     st.write("Here, you can explore which variables contribute most to e.g. ratings via PCA analysis.")
 
-    # Load the CSV into a pandas DataFrame
-    file_path = r"C:\Users\tloon\Downloads\IMDb movies.csv"
-    df = pd.read_csv(file_path, dtype={"original_title": str})
+    # Download CSV file from Google Drive
+    url = "https://drive.google.com/uc?id=https://drive.google.com/file/d/13TfN-gIkjs-QKKtBcJI5AWzGWp8OjySs/view?usp=drive_link"
+    output = "IMDb_movies.csv"
+    gdown.download(url, output, quiet=False)
+
+    # Read the downloaded CSV
+    df = pd.read_csv(output)
 
     # Display the table with top N rows
     st.write("Interactive Table of all Movies:")

@@ -27,11 +27,20 @@ elif page == "Descriptive Analysis":
 
     # Download CSV file from Google Drive
     url = "https://drive.google.com/file/d/1ZVHsrxql9z61Fw8wnikyiOLRB5lGodHt/view?usp=drive_link"
-    output = "IMDb_movies.csv"
+    output = "IMDb movies.csv"
     gdown.download(url, output, quiet=False)
 
     # Read the downloaded CSV
-    df = pd.read_csv(output)
+    try:
+        df = pd.read_csv(
+            output,
+            sep=",",  # Specify the delimiter
+            on_bad_lines="skip",  # Skip problematic lines
+            low_memory=False,  # Disable chunking for more accurate parsing
+            encoding="utf-8",  # Adjust encoding if necessary
+        )
+    except Exception as e:
+        st.write(f"Error reading CSV: {e}")
 
     # Display the table with top N rows
     st.write("Interactive Table of all Movies:")

@@ -34,7 +34,7 @@ elif page == "Descriptive Analysis":
     try:
         df = pd.read_csv(
             output,
-            sep="\t",  # Specify the delimiter
+            sep=",",  # Specify the delimiter
             on_bad_lines="skip",  # Skip problematic lines
             low_memory=False,  # Disable chunking for more accurate parsing
             encoding="utf-8",  # Adjust encoding if necessary

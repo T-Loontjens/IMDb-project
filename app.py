@@ -3,7 +3,6 @@ import pandas as pd
 from st_aggrid import AgGrid, GridOptionsBuilder
 import gdown
 
-
 # Set the page layout to wide
 st.set_page_config(layout="wide")
 
@@ -14,10 +13,8 @@ page = st.sidebar.radio("Go to", ["Homepage", "Descriptive Analysis", "Predictiv
 # Homepage
 if page == "Homepage":
     st.title("Welcome to the IMDb Project")
-    st.write("Explore the different analyses we've created for movie recommendations and insights based on extensive IMDb datasets of close to 86.000 movies.")
-    st.write("")
-    st.write("Navigate to the different analyses using the sidebar.")
-    st.write("")
+    st.write("Explore the different analyses we've created for movie recommendations and insights based on extensive IMDb datasets of close to 86.000 movies.\n")
+    st.write("Navigate to the different analyses using the sidebar.\n")
     st.write("We are Kiki, Anouck, Menno, Michiel and Tom of Case 10 Group 1.")
 
 # Descriptive Analysis
@@ -25,13 +22,19 @@ elif page == "Descriptive Analysis":
     st.title("Descriptive Analysis")
     st.write("Here, you can explore which variables contribute most to e.g. ratings via PCA analysis.")
 
-    # Download CSV file from Google Drive
+    # Download the CSV file from Google Drive
     url = "https://drive.google.com/uc?id=1ZVHsrxql9z61Fw8wnikyiOLRB5lGodHt&export=download"
-    output = "IMDb movies.csv"
+    output = "IMDb_movies.csv"
     gdown.download(url, output, quiet=False)
 
-    # Read the downloaded CSV
-    df = pd.read_csv(output)
+    # Read the file to preview column names
+    preview = pd.read_csv(output, nrows=0)
+
+    # Define the column indices to read (e.g., columns 0, 1, and 3 through 16)
+    columns_to_read = list(preview.columns[0:2]) + list(preview.columns[3:16])
+
+    # Read the desired columns into the DataFrame
+    df = pd.read_csv(output, usecols=columns_to_read)
 
     # Display the table with top N rows
     st.write("Interactive Table of all Movies:")

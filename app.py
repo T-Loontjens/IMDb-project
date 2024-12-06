@@ -1,37 +1,88 @@
 import streamlit as st
 import pandas as pd
 from st_aggrid import AgGrid, GridOptionsBuilder
-import gdown
-import random
+import requests
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 # Set the page layout to wide
 st.set_page_config(layout="wide")
 
+# url leading to google colab backend server
+global ngrok_url 
+ngrok_url = "https://7420-35-223-4-148.ngrok-free.app"
+
 # Sidebar navigation with headers
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Go to", ["Homepage", "Movie recommendations", "Movie rating prediction", "Other projects"])
+page = st.sidebar.radio("Go to", ["Homepage", "Movie database", "Insights", "Movie rating prediction", "Movie recommendations"])
 
-# Cache the CSV download and loading process so it only loads once and not every time a single filter is changed
+# Caching the API call to avoid redundant requests
 @st.cache_data
-def load_data():
-    url = "https://drive.google.com/uc?export=download&id=107JsqPNA8Brr2vYrcQZyXQZwv25FFDNM"
-    output = "movie_data.csv"
-    gdown.download(url, output, quiet=False)
+def fetching_movies(payload):
+    """Fetches data from the API and caches it."""
+    api_url = f"{ngrok_url}/analyze"
+    response = requests.post(api_url, json=payload)
 
-    # Load the data into a Pandas DataFrame
-    df = pd.read_csv(
-        output,
-        quotechar='"',       # Use double quotes for quoted fields
-        escapechar='\\',     # Escape special characters
-        delimiter=",",       # Delimiter for columns
-        lineterminator="\n", # Line terminator
-        on_bad_lines="skip"  # Skip problematic lines
-    )
-    return df
+    if response.status_code == 200:
+        filtered_data = response.json()
+        df = pd.DataFrame(filtered_data)
+        
+        # Ensure avg_vote has 1 decimal place
+        if 'avg_vote' in df.columns:
+            df['avg_vote'] = df['avg_vote'].round(1)  # Rounds to 1 decimal place
+        
+        return df
+    else:
+        st.error("Failed to fetch data. Please try again.")
+        return pd.DataFrame()  # Return an empty DataFrame in case of failure
 
-# Initialize session state for filtered data
-if "filtered_df" not in st.session_state:
-    st.session_state.filtered_df = pd.DataFrame()
+def fetching_columns(payload):
+    """Fetches data from the API and caches it."""
+    api_url = f"{ngrok_url}/columns"
+    response = requests.post(api_url, json=payload)
+
+    if response.status_code == 200:
+        filtered_data = response.json()
+        df = pd.DataFrame(filtered_data)
+
+        # Ensure avg_vote has 1 decimal place
+        if 'avg_vote' in df.columns:
+            df['avg_vote'] = df['avg_vote'].round(1)  # Rounds to 1 decimal place
+        
+        return df
+    else:
+        st.error("Failed to fetch data. Please try again.")
+        return pd.DataFrame()  # Return an empty DataFrame in case of failure
+
+def dynamic_plot(x_col, y_col=None, plot_type="scatter"):
+    """
+    Generates plots dynamically based on user inputs.
+    Args:
+    - x_col (Series): Column for x-axis.
+    - y_col (Series, optional): Column for y-axis.
+    - plot_type (str): Type of plot ('scatter', 'hist', 'bar', 'box', etc.).
+    """
+    plt.figure(figsize=(10, 6))
+    if plot_type == "scatter" and y_col is not None and not y_col.empty:
+        sns.scatterplot(x=x_col, y=y_col)
+        plt.title(f"Scatter Plot: {x_col.name} vs {y_col.name}")
+    elif plot_type == "hist":
+        sns.histplot(x=x_col, kde=True, bins=20)
+        plt.title(f"Histogram of {x_col.name}")
+    elif plot_type == "bar" and y_col is None:
+        sns.countplot(x=x_col)
+        plt.title(f"Bar Plot of {x_col.name}")
+    elif plot_type == "box" and y_col is not None and not y_col.empty:
+        sns.boxplot(x=x_col, y=y_col)
+        plt.title(f"Box Plot: {x_col.name} by {y_col.name}")
+    else:
+        plt.text(0.5, 0.5, "Invalid input for plot type or columns", ha='center', va='center')
+        plt.title("Error")
+
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    st.pyplot(plt)
+
 
 # Homepage
 if page == "Homepage":
@@ -41,84 +92,153 @@ if page == "Homepage":
     st.write("Hier moeten nog top 10 meest recente releases of top 10 best beoordeelde films ooit/deze maand/dit jaar")
 
 # Movie recommendations
-elif page == "Movie recommendations":
-    st.title("Top 100 Movie recommendations based on your preferences")
+elif page == "Movie database":
+    st.title("Movie list based on your preferences")
 
-    # Load the dataset
-    df = load_data()
+    # Initialize session state for filters and data
+    if "filters" not in st.session_state:
+        st.session_state.filters = {
+            "avg_vote": 6.0,
+            "votes": 0,
+            "genre": "Any",
+            "min_year": 1990,
+            "language": "English",
+            "actors": ""
+        }
 
-    # Sidebar filters
-    st.sidebar.write("")
-    rating = st.sidebar.slider("Select minimum average rating:", min_value=0.0, max_value=10.0, step=0.1, value=7.5)
-    votes = st.sidebar.slider("Select minimum number of votes:", min_value=0, max_value=int(df['votes'].max()), step=1000, value=1000)
+    if "table_data" not in st.session_state:
+        st.session_state.table_data = pd.DataFrame()
 
-    # Unique genres and languages
-    genres = df['genre'].dropna().str.split(',').explode().unique()
-    languages_split = df['language'].dropna().str.split(',').explode().str.strip().unique()
-
-    genre = st.sidebar.selectbox("Select genre (optional):", options=['Any'] + sorted(genres))
-    min_year = st.sidebar.number_input("Select minimum year of publication:", min_value=1800, max_value=2024, step=1, value=1995)
-    language = st.sidebar.selectbox("Select language (optional):", options=['Any'] + sorted(languages_split))
-    actor_search = st.sidebar.text_input("Search for actor(s):", value="", help="Enter a name to search for actors.")
+    # Sidebar filters - updated dynamically
+    st.session_state.filters["avg_vote"] = st.sidebar.slider(
+        "Select minimum average rating:",
+        min_value=0.0,
+        max_value=10.0,
+        step=0.1,
+        value=st.session_state.filters.get("avg_vote", 6.0)
+    )
+    st.session_state.filters["votes"] = st.sidebar.slider(
+        "Select minimum number of votes:",
+        min_value=0,
+        max_value=1000000,
+        step=1000,
+        value=st.session_state.filters.get("votes", 0)
+    )
+    st.session_state.filters["genre"] = st.sidebar.selectbox(
+        "Select genre (optional):",
+        options=['Any'] + ['Action', 'Drama', 'Comedy'],
+        index=['Any', 'Action', 'Drama', 'Comedy'].index(st.session_state.filters.get("genre", "Any"))
+    )
+    st.session_state.filters["year"] = st.sidebar.number_input(
+        "Select minimum year of publication:",
+        min_value=1800,
+        max_value=2024,
+        step=1,
+        value=st.session_state.filters.get("year", 1990)
+    )
+    st.session_state.filters["language"] = st.sidebar.selectbox(
+        "Select language (optional):",
+        options=['Any', 'English', 'French'],
+        index=['Any', 'English', 'French'].index(st.session_state.filters.get("language", "English"))
+    )
+    st.session_state.filters["actors"] = st.sidebar.text_input(
+        "Search for actor(s):",
+        value=st.session_state.filters.get("actors", ""),
+        help="Enter a name to search for actors."
+    )
 
     # Add a search button
     if st.sidebar.button("Search"):
-        # Filter data when "Search" is clicked
-        filtered_df = df[df['avg_vote'] >= rating]
-        filtered_df = filtered_df[filtered_df['votes'] >= votes]
+        # Define the payload
+        payload = {
+            **st.session_state.filters
+        }
 
-        if genre != 'Any':
-            filtered_df = filtered_df[filtered_df['genre'].str.contains(genre, na=False)]
+        # Fetch data using the cached function
+        st.session_state.table_data = fetching_movies(payload)
 
-        filtered_df = filtered_df[filtered_df['year'].astype(int) >= min_year]
+    # Display the table if data is available
+    if not st.session_state.table_data.empty:
+        df = st.session_state.table_data
 
-        if language != 'Any':
-            filtered_df = filtered_df[filtered_df['language'].str.contains(language, na=False, case=False)]
+        # Sort the DataFrame by 'title' in ascending order
+        df = df.sort_values(by='title')
 
-        if actor_search:
-            filtered_df = filtered_df[filtered_df['actors'].str.contains(actor_search, case=False, na=False)]
-
-        # Select 100 random rows from the filtered DataFrame
-        if len(filtered_df) > 100:
-            sampled_df = filtered_df.sample(n=100, random_state=random.randint(1, 1000))
-        else:
-            sampled_df = filtered_df
-
-        # Save the filtered data to session state
-        st.session_state.filtered_df = sampled_df
-
-    # Display filtered data only if it's available
-    if not st.session_state.filtered_df.empty:
-        # Sort the sampled DataFrame by 'title' in ascending order
-        sampled_df = st.session_state.filtered_df.sort_values(by='title')
-
-        # Prioritize the first four columns and keep the rest as they are
+        # Prioritize the columns and keep the rest as they are
         important_columns = ['title', 'year', 'genre', 'avg_vote', 'votes', 'language', 'duration', 'actors']
-        other_columns = [col for col in sampled_df.columns if col not in important_columns]
-        sampled_df = sampled_df[important_columns + other_columns]
+        other_columns = [col for col in df.columns if col not in important_columns]
+        df = df[important_columns + other_columns]
 
         # Configure AgGrid for interactive table
-        grid_options = GridOptionsBuilder.from_dataframe(sampled_df)
+        grid_options = GridOptionsBuilder.from_dataframe(df)
         grid_options.configure_pagination(enabled=True, paginationAutoPageSize=100)  # Enable pagination
         grid_options.configure_default_column(editable=True, sortable=True, filterable=True)  # Enable sorting and filtering
 
         # Display the interactive table
-        st.write(f"Showing {len(sampled_df)} movies with the selected filters:")
-        AgGrid(sampled_df, gridOptions=grid_options.build())
+        st.write(f"Showing {len(df)} movies with the selected filters:")
+        AgGrid(df, gridOptions=grid_options.build())
+    else:
+        st.write("No data to display. Please adjust your filters or click 'Search'.")
+
+elif page == "Insights":
+    # Initialize session state for filters and data
+    if "plots" not in st.session_state:
+        st.session_state.plots = {
+            "x-axis": "",
+            "y-axis": ""
+        }
+    
+    st.title("Insights")
+    # Dynamic plot
+    if "table_data" not in st.session_state:
+        st.session_state.table_data = pd.DataFrame()
+
+    st.session_state.plots["x-axis"] = st.selectbox(
+        "Select a variable:",
+        options = ['year', 'genre', 'language', 'director', 'writer', 'production_company', 'actors', 'avg_vote', 'votes'],
+        index=0  # Set index to 0 as 'avg_vote' is the first option
+    )
+    st.session_state.plots["y-axis"] = st.selectbox(
+        "Select a variable (optional):",
+        options = ['year', 'genre', 'language', 'director', 'writer', 'production_company', 'actors', 'avg_vote', 'votes'],
+        index=0
+    )
+    selected_plot = st.selectbox(
+        "Select a plot:",
+        options=['scatter', 'hist', 'bar', 'box'],
+        index=0
+    )
+
+    # Add a search button
+    if st.button("Search"):
+        # Define the payload
+        payload = {
+            **st.session_state.plots
+        }
+
+        # Fetch data using the cached function
+        st.session_state.table_data = fetching_columns(payload)
+
+    # Display the plot if data is available
+    if not st.session_state.table_data.empty:
+        # Convert JSON data to a DataFrame
+        data = pd.DataFrame(st.session_state.table_data)
+
+        # Extract columns for plotting
+        x_col = data[st.session_state.plots["x-axis"]]
+        y_col = data[st.session_state.plots["y-axis"]]
+
+        # Make the plot here
+        dynamic_plot(x_col, y_col, selected_plot)
 
 # Movie rating prediction
 elif page == "Movie rating prediction":
     st.title("Movie rating prediction")
-    # Add predictive analysis code here
+    # Add analysis code here
 
 # Other projects
-elif page == "Other projects":
-    st.title("Other projects")
-    # Add Predictive analysis code here
+elif page == "Movie recommendations":
+    st.title("Movie recommendations")
+    # Add analysis code here
 
-# To run the script, put this in the terminal -> python -m streamlit run app.py
-
-'''
-Future objectives:
-- "Insights" tab
-'''
+# python -m streamlit run app.py

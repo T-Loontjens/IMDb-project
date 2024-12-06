@@ -1,5 +1,4 @@
 import streamlit as st
-from streamlit_datatable import DataTable
 import pandas as pd
 import requests
 import seaborn as sns
@@ -171,7 +170,7 @@ elif page == "Movie database":
 
         # Display the interactive table
         st.write(f"Showing {len(df)} movies with the selected filters:")
-        DataTable(df)
+        st.dataframe(df)
     else:
         st.write("No data to display. Please adjust your filters or click 'Search'.")
 

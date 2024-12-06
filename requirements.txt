@@ -1,4 +1,6 @@
 streamlit
 pandas
-streamlit-aggrid
-gdown
+st-aggrid
+requests
+seaborn
+matplotlib

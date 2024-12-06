@@ -1,6 +1,6 @@
 streamlit
+streamlit-datatable
 pandas
-st-aggrid
 requests
 seaborn
 matplotlib

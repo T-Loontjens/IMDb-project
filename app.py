@@ -1,6 +1,6 @@
 import streamlit as st
+from streamlit_datatable import DataTable
 import pandas as pd
-from st_aggrid import AgGrid, GridOptionsBuilder
 import requests
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -169,14 +169,9 @@ elif page == "Movie database":
         other_columns = [col for col in df.columns if col not in important_columns]
         df = df[important_columns + other_columns]
 
-        # Configure AgGrid for interactive table
-        grid_options = GridOptionsBuilder.from_dataframe(df)
-        grid_options.configure_pagination(enabled=True, paginationAutoPageSize=100)  # Enable pagination
-        grid_options.configure_default_column(editable=True, sortable=True, filterable=True)  # Enable sorting and filtering
-
         # Display the interactive table
         st.write(f"Showing {len(df)} movies with the selected filters:")
-        AgGrid(df, gridOptions=grid_options.build())
+        DataTable(df)
     else:
         st.write("No data to display. Please adjust your filters or click 'Search'.")
 

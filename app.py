@@ -4,16 +4,18 @@ import requests
 import seaborn as sns
 import matplotlib.pyplot as plt
 
+# python -m streamlit run app.py
+
 # Set the page layout to wide
 st.set_page_config(layout="wide")
 
 # url leading to google colab backend server
 global ngrok_url 
-ngrok_url = "https://5d86-104-199-242-174.ngrok-free.app"
+ngrok_url = "https://8cb5-34-125-16-213.ngrok-free.app"
 
 # Sidebar navigation with headers
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Go to", ["Homepage", "Movie database", "Insights", "Movie rating prediction", "Movie recommendations"])
+page = st.sidebar.radio("Go to", ["Homepage", "Movie database", "Insights", "Movie rating prediction"])
 
 # Caching the API call to avoid redundant requests
 @st.cache_data
@@ -160,10 +162,7 @@ elif page == "Movie database":
     if not st.session_state.table_data.empty:
         df = st.session_state.table_data
 
-        # Sort the DataFrame by 'title' in ascending order
-        df = df.sort_values(by='title')
-
-        # Prioritize the columns and keep the rest as they are
+        # Order these columns and keep the rest as they are
         important_columns = ['title', 'year', 'genre', 'avg_vote', 'votes', 'language', 'duration', 'actors']
         other_columns = [col for col in df.columns if col not in important_columns]
         df = df[important_columns + other_columns]
@@ -174,27 +173,17 @@ elif page == "Movie database":
     else:
         st.write("No data to display. Please adjust your filters or click 'Search'.")
 
-elif page == "Insights":
-    # Initialize session state for filters and data
-    if "plots" not in st.session_state:
-        st.session_state.plots = {
-            "x-axis": "",
-            "y-axis": ""
-        }
-    
+elif page == "Insights":    
     st.title("Insights")
     # Dynamic plot
-    if "table_data" not in st.session_state:
-        st.session_state.table_data = pd.DataFrame()
-
-    st.session_state.plots["x-axis"] = st.selectbox(
+    x_col = st.selectbox(
         "Select a variable:",
-        options = ['year', 'genre', 'language', 'director', 'writer', 'production_company', 'actors', 'avg_vote', 'votes'],
-        index=0  # Set index to 0 as 'avg_vote' is the first option
+        options = ['year', 'avg_vote', 'votes'], # For now, only take numerical values. Strings will be implemented in the future.
+        index=0
     )
-    st.session_state.plots["y-axis"] = st.selectbox(
+    y_col = st.selectbox(
         "Select a variable (optional):",
-        options = ['year', 'genre', 'language', 'director', 'writer', 'production_company', 'actors', 'avg_vote', 'votes'],
+        options = ['year', 'avg_vote', 'votes'], # For now, only take numerical values. Strings will be implemented in the future.
         index=0
     )
     selected_plot = st.selectbox(
@@ -206,33 +195,27 @@ elif page == "Insights":
     # Add a search button
     if st.button("Search"):
         # Define the payload
-        payload = {
-            **st.session_state.plots
-        }
+        payload = {"x-axis": x_col}
+        if y_col != "None":
+            payload["y-axis"] = y_col
 
-        # Fetch data using the cached function
-        st.session_state.table_data = fetching_columns(payload)
+        # Fetch data from the backend
+        column_data = fetching_columns(payload)
 
-    # Display the plot if data is available
-    if not st.session_state.table_data.empty:
-        # Convert JSON data to a DataFrame
-        data = pd.DataFrame(st.session_state.table_data)
+        # Display the plot if data is available
+        try:
+            # Convert JSON data to a DataFrame
+            data = pd.DataFrame(column_data)
 
-        # Extract columns for plotting
-        x_col = data[st.session_state.plots["x-axis"]]
-        y_col = data[st.session_state.plots["y-axis"]]
+            x_data = data[x_col]
+            y_data = data[y_col]
 
-        # Make the plot here
-        dynamic_plot(x_col, y_col, selected_plot)
+            # Make the plot here
+            dynamic_plot(x_data, y_data, selected_plot)
+        except Exception as e:
+            st.write(e)
 
 # Movie rating prediction
 elif page == "Movie rating prediction":
     st.title("Movie rating prediction")
     # Add analysis code here
-
-# Other projects
-elif page == "Movie recommendations":
-    st.title("Movie recommendations")
-    # Add analysis code here
-
-# python -m streamlit run app.py

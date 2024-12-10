@@ -90,7 +90,6 @@ if page == "Homepage":
     st.title("Welcome to the IMDb Project")
     st.write("Navigate to the different pages using the sidebar.\n")
     st.write("We are Kiki, Anouck, Menno, Michiel and Tom of Case 10 Group 1.\n")
-    st.write("Hier moeten nog top 10 meest recente releases of top 10 best beoordeelde films ooit/deze maand/dit jaar")
 
 # Movie recommendations
 elif page == "Movie database":

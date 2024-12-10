@@ -11,7 +11,7 @@ st.set_page_config(layout="wide")
 
 # url leading to google colab backend server
 global ngrok_url 
-ngrok_url = "https://8cb5-34-125-16-213.ngrok-free.app"
+ngrok_url = "https://c5cd-34-16-144-159.ngrok-free.app"
 
 # Sidebar navigation with headers
 st.sidebar.title("Navigation")

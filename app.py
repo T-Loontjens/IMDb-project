@@ -4,14 +4,12 @@ import requests
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-# python -m streamlit run app.py
-
 # Set the page layout to wide
 st.set_page_config(layout="wide")
 
 # url leading to google colab backend server
-global ngrok_url 
-ngrok_url = "https://c5cd-34-16-144-159.ngrok-free.app"
+global ngrok_url
+ngrok_url = "" # Fill in the url created by ngrok received from the backend server.
 
 # Sidebar navigation with headers
 st.sidebar.title("Navigation")
@@ -27,11 +25,11 @@ def fetching_movies(payload):
     if response.status_code == 200:
         filtered_data = response.json()
         df = pd.DataFrame(filtered_data)
-        
+
         # Ensure avg_vote has 1 decimal place
         if 'avg_vote' in df.columns:
             df['avg_vote'] = df['avg_vote'].round(1)  # Rounds to 1 decimal place
-        
+
         return df
     else:
         st.error("Failed to fetch data. Please try again.")
@@ -49,20 +47,13 @@ def fetching_columns(payload):
         # Ensure avg_vote has 1 decimal place
         if 'avg_vote' in df.columns:
             df['avg_vote'] = df['avg_vote'].round(1)  # Rounds to 1 decimal place
-        
+
         return df
     else:
         st.error("Failed to fetch data. Please try again.")
         return pd.DataFrame()  # Return an empty DataFrame in case of failure
 
 def dynamic_plot(x_col, y_col=None, plot_type="scatter"):
-    """
-    Generates plots dynamically based on user inputs.
-    Args:
-    - x_col (Series): Column for x-axis.
-    - y_col (Series, optional): Column for y-axis.
-    - plot_type (str): Type of plot ('scatter', 'hist', 'bar', 'box', etc.).
-    """
     plt.figure(figsize=(10, 6))
     if plot_type == "scatter" and y_col is not None and not y_col.empty:
         sns.scatterplot(x=x_col, y=y_col)
@@ -90,6 +81,7 @@ if page == "Homepage":
     st.title("Welcome to the IMDb Project")
     st.write("Navigate to the different pages using the sidebar.\n")
     st.write("We are Kiki, Anouck, Menno, Michiel and Tom of Case 10 Group 1.\n")
+    st.write("Hier moeten nog top 10 meest recente releases of top 10 best beoordeelde films ooit/deze maand/dit jaar")
 
 # Movie recommendations
 elif page == "Movie database":
@@ -172,7 +164,8 @@ elif page == "Movie database":
     else:
         st.write("No data to display. Please adjust your filters or click 'Search'.")
 
-elif page == "Insights":    
+
+elif page == "Insights":
     st.title("Insights")
     # Dynamic plot
     x_col = st.selectbox(
@@ -217,4 +210,43 @@ elif page == "Insights":
 # Movie rating prediction
 elif page == "Movie rating prediction":
     st.title("Movie rating prediction")
-    # Add analysis code here
+    # Machine learning Random Forest
+    year = st.number_input(
+        "Select year of publication:",
+        min_value=1800,
+        max_value=2030,
+        step=1,
+        value=2024
+    )
+    duration = st.number_input(
+        "How many minutes is your movie?",
+        min_value=0,
+        max_value=300,
+        step=1,
+        value=150
+    )
+    head_actor_male = st.selectbox(
+        "Is the head actor male?",
+        options=['Yes', 'No'],
+        index=0
+    )
+    top_actors = st.selectbox(
+        "Does your movie contain top actors?",
+        options=['Yes', 'No'],
+        index=0
+    )
+    head_actor_male = 1 if head_actor_male == "Yes" else 0
+    top_actors = 1 if top_actors == "Yes" else 0
+
+    # Add a predict button
+    if st.button("Predict"):
+        # Define the payload
+        payload = {'year':year, 'duration':duration, 'head_actor_male':head_actor_male, 'top_actors':top_actors}
+
+        #Fetches data from the API and caches it.
+        api_url = f"{ngrok_url}/predict"
+        response = requests.post(api_url, json=payload)
+
+        if response.status_code == 200:
+            prediction_value = response.json()
+            st.title(f"Your movie rating prediction is: {float(prediction_value):.2f}")
